@@ -1,0 +1,24 @@
+# This is an example Starter pipeline configuration
+# Use a skeleton to build, test and deploy using manual and parallel steps
+# -----
+# You can specify a custom docker image from Docker Hub as your build environment.
+
+image: atlassian/default-image:3
+
+pipelines:
+  default:
+    - parallel:
+      - step:
+          name: 'Build and Test'
+          script:
+            - echo "Your build and test goes here..."
+      - step:
+          name: Send notification to Discord
+          script:
+            - apt-get update && apt-get install -y curl
+            - export AUTHOR_NAME=`git log -1 --pretty=format:"%an"`
+            - export DISCORD_USERNAME=$(echo $GIT_DISCORD_MAPPING | jq -r '.["'$AUTHOR_NAME'"]')
+            - curl -X POST https://discord.com/api/webhooks/1090715997117366463/NQ-2upwMB0BHgLZ_LJyhq7-CbQggtrg4E_ozQ3R6jOsnfsDyLh1tUK0q-_u0nT67KM5g -d {content:"Build Test"}
+
+
+

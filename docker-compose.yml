@@ -1,0 +1,151 @@
+version: '3.9'
+
+services:
+  modsecurity:
+    image: owasp/modsecurity-crs:3.3.5-nginx-202402140602
+    #build: ./modsecurity
+    container_name: modsecurity
+    ports:
+      - "80:8080"
+      - "443:8443"
+    environment:
+      - BACKEND=http://nginx:80
+    depends_on:
+      - nginx
+    networks:
+      - internal_network
+
+  nginx:
+    build: ./nginx
+    container_name: nginx
+#    ports:
+#      - "80:80"
+#      - "443:443"
+    environment:
+      - SERVER_NAME=${SERVER_NAME:-mytest.local}
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - /var/docker/nginx/www:/var/www
+    depends_on:
+      - php7.2
+      - php8.1
+    networks:
+      - internal_network
+
+  php7.2:
+    build: ./php7.2
+    container_name: php7.2
+    volumes:
+      - /var/docker/nginx/www:/var/www
+      - ./php7.2/.bash_history:/root/.bash_history
+    environment:
+      - SERVICE_NAME=php7.2
+    networks:
+      - internal_network
+
+  php8.1:
+    build: ./php8.1
+    container_name: php8.1
+    volumes:
+      - /var/docker/nginx/www:/var/www
+      - ./php8.1/.bash_history:/root/.bash_history
+    environment:
+      - SERVICE_NAME=php8.1
+    networks:
+      - internal_network
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: Sa23H7xv!Hkdl
+      #MYSQL_DATABASE: database
+      #MYSQL_USER: user
+      #MYSQL_PASSWORD: password
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+#    ports:
+#      - "3306:3306"
+    networks:
+       - internal_network
+
+#  mongo:
+#    image: mongo:latest
+#    container_name: mongo
+#    environment:
+#      MONGO_INITDB_ROOT_USERNAME: username
+#      MONGO_INITDB_ROOT_PASSWORD: password
+#    volumes:
+#      - ./mongo-data:/data/db
+#    ports:
+#      - "27017:27017"
+#    networks:
+#      - internal_network
+
+#  elasticsearch:
+#      image: elasticsearch:7.16.3
+#      container_name: elasticsearch
+#      environment:
+#        - "discovery.type=single-node"
+#      volumes:
+#        - esdata:/usr/share/elasticsearch/data
+#      ports:
+#        - "9200:9200"
+#      networks:
+#        - internal_network
+
+#  kibana:
+#    image: kibana:7.16.3
+#    container_name: kibana
+#    environment:
+#      - "ELASTICSEARCH_HOSTS=http://elasticsearch:9200"
+#    ports:
+#      - "5601:5601"
+#    networks:
+#      - internal_network
+
+  phpmyadmin:
+      image: phpmyadmin/phpmyadmin:latest
+      container_name: phpmyadmin
+      environment:
+        PMA_HOST: mysql
+#        PMA_USER: root
+ #       PMA_PASSWORD: password
+      ports:
+        - "8080:80"
+      depends_on:
+        - mysql
+      networks:
+        - internal_network
+
+#  mailhog:
+#      image: mailhog/mailhog
+#      container_name: mailhog
+#      ports:
+#        - "8025:8025"
+#        - "1025:1025"
+#      networks:
+#       - internal_network
+ # mini-dns:
+ #   build: ./mini-dns
+ #   container_name: mini-dns
+ #   ports:
+ #    - "53:53/udp"
+ #   volumes:
+ #     - ./dnsmasq.conf:/etc/dnsmasq.conf
+
+networks:
+  internal_network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  esdata:
+  local_www:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/www

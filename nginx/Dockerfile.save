@@ -1,0 +1,79 @@
+# Utiliser l'image NGINX officielle comme base
+FROM nginx:latest
+
+# Ajouter l'alias ll
+RUN echo "alias ll='ls -l'" >> /root/.bashrc
+
+# Installer les dépendances nécessaires pour ajouter le référentiel NodeSource
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gnupg curl ca-certificates
+# Ajoutez ces lignes pour configurer le DNS 
+# dans le conteneur sans affecter l'hôte 
+RUN echo '{ "dns": ["0.0.0.0", "8.8.8.8"] }' > /etc/docker/daemon.json
+RUN systemctl restart docker
+
+# Installer les dépendances nécessaires 
+# pour ajouter le référentiel NodeSource
+RUN apt-get update && \ apt-get install -y --no-install-recommends gnupg curl 
+    ca-certificates
+# Installer git et les    autres dépendances nécessaires pour la compilation
+
+# Ajouter le référentiel NodeSource pour 
+# installer Node.js et npmRUN apt-get 
+RUN apt-get update && \
+    apt-get install -y nodejs# update && \
+
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash    apt-get install -y --no-install-recommends git autoconf automake libtool build-essential libpcre3 libpcre3-dev libssl-dev zlib1g-dev libxml2-dev wget
+
+# Cloner le dépôt ModSecurity et initialiser ses sous-modules
+RUN git clone --depth 1 https://github.com/SpiderLabs/ModSecurity.git /usr/local/src/ModSecurity && \ cd /usr/local/src/ModSecurity && \
+    git submodule init && \
+    git submodule update
+
+# Compiler et installer ModSecurity
+RUN cd /usr/local/src/ModSecurity && \
+    ./build.sh && \
+    ./configure && \
+    make && \
+    make install
+
+# Installer Node.js et npm
+RUN apt-get update && \
+    apt-get install -y nodejs
+
+# Installer wget
+RUN apt-get install -y wget
+
+# Télécharger et installer le connecteur ModSecurity-nginx
+RUN wget -O ModSecurity-nginx.tar.gz https://github.com/SpiderLabs/ModSecurity-nginx/archive/refs/tags/v1.0.1.tar.gz && \
+    tar -xzvf ModSecurity-nginx.tar.gz && \
+    wget http://nginx.org/download/nginx-$(nginx -v 2>&1 | cut -d'/' -f2).tar.gz && \
+    tar zxvf nginx-*.tar.gz && \
+    cd nginx-*/ && \
+    ./configure --with-compat --add-dynamic-module=/ModSecurity-nginx-1.0.1 && \
+    make modules && \
+    cp objs/ngx_http_modsecurity_module.so /etc/nginx/modules/
+
+# Nettoyer les fichiers temporaires et les paquets non nécessaires
+RUN apt-get remove --purge -y build-essential wget tar && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /ModSecurity.tar.gz /ModSecurity-nginx.tar.gz /ModSecurity-3.0.4 /ModSecurity-nginx-1.0.1
+
+
+
+SHELL ["/bin/bash", "-c"]
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash && \
+    source ~/.bashrc && \
+    nvm install v10.24.1 && \
+    nvm use v10.24.1
+
+# test :
+#FROM ubuntu:22.04
+
+#COPY /usr/bin/xvfb-run /usr/bin/xvfb-run
+#COPY /usr/bin/wkhtmltopdf /usr/bin/wkhtmltopdf
+
+CMD ["/bin/bash"]
+CMD ["nginx", "-g", "daemon off;"]
+
